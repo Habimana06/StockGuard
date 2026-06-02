@@ -1,0 +1,54 @@
+# StockGuard — local dev stack (Postgres + API + React UI)
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: stockguard-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: stockguard
+      POSTGRES_PASSWORD: stockguard
+      POSTGRES_DB: stockguard
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U stockguard -d stockguard"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: stockguard-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      DATABASE_URL: postgresql://stockguard:stockguard@postgres:5432/stockguard
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173}
+      RESERVATION_TTL_MINUTES: 5
+    ports:
+      - "4000:4000"
+
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ""
+    container_name: stockguard-web
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "5173:80"
+
+volumes:
+  postgres_data:

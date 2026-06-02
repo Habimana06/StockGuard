@@ -1,0 +1,100 @@
+// StockGuard data model — stock moves only inside transactions; reservations hold stock temporarily.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ReservationStatus {
+  ACTIVE
+  COMPLETED
+  EXPIRED
+  CANCELLED
+}
+
+enum InventoryAction {
+  RESERVE
+  RELEASE
+  CHECKOUT
+  ADJUSTMENT
+  SEED
+}
+
+model User {
+  id           String        @id @default(cuid())
+  email        String        @unique
+  passwordHash String
+  displayName  String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  reservations Reservation[]
+  orders       Order[]
+}
+
+model Product {
+  id               String        @id @default(cuid())
+  name             String
+  description      String?
+  priceCents       Int
+  // availableStock is the source of truth for what can still be reserved
+  availableStock   Int
+  totalStock       Int
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  reservations     Reservation[]
+  orders           Order[]
+  inventoryLogs    InventoryLog[]
+
+  @@index([availableStock])
+}
+
+model Reservation {
+  id        String            @id @default(cuid())
+  userId    String
+  productId String
+  quantity  Int
+  status    ReservationStatus @default(ACTIVE)
+  expiresAt DateTime
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+  user      User              @relation(fields: [userId], references: [id])
+  product   Product           @relation(fields: [productId], references: [id])
+  order     Order?
+
+  // One active reservation per user+product — enforced in app + partial unique index via migration SQL if needed
+  @@index([productId, status])
+  @@index([expiresAt, status])
+  @@index([userId, productId, status])
+}
+
+model Order {
+  id            String       @id @default(cuid())
+  userId        String
+  productId     String
+  reservationId String       @unique
+  quantity      Int
+  totalCents    Int
+  createdAt     DateTime     @default(now())
+  user          User         @relation(fields: [userId], references: [id])
+  product       Product      @relation(fields: [productId], references: [id])
+  reservation   Reservation  @relation(fields: [reservationId], references: [id])
+}
+
+model InventoryLog {
+  id          String          @id @default(cuid())
+  productId   String
+  action      InventoryAction
+  delta       Int
+  stockBefore Int
+  stockAfter  Int
+  referenceId String?
+  note        String?
+  createdAt   DateTime        @default(now())
+  product     Product         @relation(fields: [productId], references: [id])
+
+  @@index([productId, createdAt])
+}
