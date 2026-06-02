@@ -2,9 +2,10 @@ import type { ReactNode } from "react";
 
 interface AppShellProps {
   children: ReactNode;
+  online?: boolean;
 }
 
-export function AppShell({ children }: AppShellProps) {
+export function AppShell({ children, online = true }: AppShellProps) {
   return (
     <div className="app-shell">
       <header className="site-header">
@@ -14,14 +15,22 @@ export function AppShell({ children }: AppShellProps) {
           </span>
           <div>
             <p className="site-header__name">StockGuard</p>
-            <p className="site-header__tag">Limited drop</p>
+            <p className="site-header__tag">Limited inventory drop</p>
           </div>
         </div>
-        <span className="site-header__pill">Live</span>
+        <div className="site-header__meta">
+          <span
+            className={`site-header__online ${online ? "site-header__online--ok" : ""}`}
+            title={online ? "Connected to API" : "Offline"}
+          >
+            {online ? "Online" : "Offline"}
+          </span>
+          <span className="site-header__pill">Live drop</span>
+        </div>
       </header>
       <main className="site-main">{children}</main>
       <footer className="site-footer">
-        <p>Built for high-concurrency inventory — no overselling, ever.</p>
+        <p>High-concurrency reservations · Transactional stock · Auto-expiring holds</p>
       </footer>
     </div>
   );

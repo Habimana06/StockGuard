@@ -32,11 +32,11 @@ export function CountdownPanel({ expiresAt, onExpired }: CountdownPanelProps) {
         <span className="countdown-panel__time">{formatCountdown(secondsLeft)}</span>
       </div>
       <div className="countdown-panel__copy">
-        <p className="countdown-panel__title">Your slot is held</p>
+        <p className="countdown-panel__title">Reservation active</p>
         <p className="countdown-panel__sub">
           {urgent
-            ? "Hurry — complete checkout before time runs out"
-            : "Finish checkout within 5 minutes to keep this pair"}
+            ? "Complete checkout now — your reservation is about to expire"
+            : "You have 5 minutes to complete checkout before stock is released"}
         </p>
       </div>
     </section>

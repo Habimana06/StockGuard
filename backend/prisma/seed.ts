@@ -2,26 +2,32 @@ import { PrismaClient, InventoryAction } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
+const DROP_PRODUCT = {
+  name: "CloudBuds Pro — White Edition",
+  description:
+    "Matte white finish, active noise canceling, 32-hour battery. Only 10 units in this drop — reserve to hold yours for 5 minutes.",
+  imageUrl:
+    "https://images.unsplash.com/photo-1606220945770-b5b6c2c55bf1?w=900&auto=format&fit=crop&q=80",
+  priceCents: 8999,
+  totalStock: 10,
+  availableStock: 10,
+};
+
 async function main() {
   const existing = await prisma.product.findFirst({
-    where: { name: "Limited Drop Sneaker" },
+    orderBy: { createdAt: "asc" },
   });
 
   if (existing) {
-    console.log("Seed already applied — skipping.");
+    await prisma.product.update({
+      where: { id: existing.id },
+      data: DROP_PRODUCT,
+    });
+    console.log(`Updated drop product ${existing.id}`);
     return;
   }
 
-  const product = await prisma.product.create({
-    data: {
-      name: "Limited Drop Sneaker",
-      description:
-        "Exclusive release — only a handful in stock. Reserve within 5 minutes to secure yours.",
-      priceCents: 12999,
-      totalStock: 10,
-      availableStock: 10,
-    },
-  });
+  const product = await prisma.product.create({ data: DROP_PRODUCT });
 
   await prisma.inventoryLog.create({
     data: {
@@ -30,11 +36,11 @@ async function main() {
       delta: 10,
       stockBefore: 0,
       stockAfter: 10,
-      note: "Initial inventory for demo drop",
+      note: "Initial inventory for limited drop",
     },
   });
 
-  const demoUser = await prisma.user.upsert({
+  await prisma.user.upsert({
     where: { email: "demo@stockguard.local" },
     update: {},
     create: {
@@ -44,7 +50,7 @@ async function main() {
     },
   });
 
-  console.log(`Seeded product ${product.id} and demo user ${demoUser.id}`);
+  console.log(`Seeded product ${product.id}`);
 }
 
 main()

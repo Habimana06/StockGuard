@@ -30,6 +30,7 @@ export function useProductDrop() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isReserving, setIsReserving] = useState(false);
   const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | null>(null);
+  const [isOnline, setIsOnline] = useState(true);
 
   const loadProduct = useCallback(
     async (productId?: string, options?: { silent?: boolean }) => {
@@ -45,6 +46,7 @@ export function useProductDrop() {
         setProduct(data.product);
         setReservation(data.activeReservation);
         setLastRefreshedAt(new Date());
+        setIsOnline(true);
 
         setPhase((current) => {
           if (current === "purchased" || current === "expired" || current === "checking-out") {
@@ -66,6 +68,9 @@ export function useProductDrop() {
           setErrorMessage(
             err instanceof Error ? err.message : "Could not load drop"
           );
+        }
+        if (err instanceof ApiError && (err.code === "NETWORK" || err.status === 0)) {
+          setIsOnline(false);
         }
       } finally {
         setIsInitialLoading(false);
@@ -154,6 +159,7 @@ export function useProductDrop() {
     isRefreshing,
     isReserving,
     lastRefreshedAt,
+    isOnline,
     reserve,
     checkout,
     onExpired,

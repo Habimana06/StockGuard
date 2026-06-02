@@ -39,6 +39,7 @@ model Product {
   id               String        @id @default(cuid())
   name             String
   description      String?
+  imageUrl         String?
   priceCents       Int
   // availableStock is the source of truth for what can still be reserved
   availableStock   Int
