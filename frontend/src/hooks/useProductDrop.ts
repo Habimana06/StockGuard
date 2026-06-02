@@ -13,7 +13,6 @@ const STOCK_POLL_MS = 5000;
 
 export type DropPhase =
   | "idle"
-  | "loading"
   | "reserved"
   | "checking-out"
   | "purchased"
@@ -24,46 +23,74 @@ export type DropPhase =
 export function useProductDrop() {
   const [product, setProduct] = useState<Product | null>(null);
   const [reservation, setReservation] = useState<ActiveReservation | null>(null);
-  const [phase, setPhase] = useState<DropPhase>("loading");
+  const [phase, setPhase] = useState<DropPhase>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [orderId, setOrderId] = useState<string | null>(null);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isReserving, setIsReserving] = useState(false);
+  const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | null>(null);
 
-  const loadProduct = useCallback(async (productId?: string) => {
-    try {
-      const id = productId ?? (await fetchFirstProduct()).id;
-      const data = await fetchDropProduct(id);
-      setProduct(data.product);
-      setReservation(data.activeReservation);
-      if (data.product.availableStock <= 0 && !data.activeReservation) {
-        setPhase("sold-out");
-      } else if (data.activeReservation) {
-        setPhase("reserved");
-      } else {
-        setPhase("idle");
+  const loadProduct = useCallback(
+    async (productId?: string, options?: { silent?: boolean }) => {
+      const silent = options?.silent ?? false;
+      if (!silent) {
+        if (!product) setIsInitialLoading(true);
+        else setIsRefreshing(true);
       }
-      setErrorMessage(null);
-    } catch (err) {
-      setPhase("error");
-      setErrorMessage(err instanceof Error ? err.message : "Could not load drop");
-    }
-  }, []);
+
+      try {
+        const id = productId ?? product?.id ?? (await fetchFirstProduct()).id;
+        const data = await fetchDropProduct(id);
+        setProduct(data.product);
+        setReservation(data.activeReservation);
+        setLastRefreshedAt(new Date());
+
+        setPhase((current) => {
+          if (current === "purchased" || current === "expired" || current === "checking-out") {
+            return current;
+          }
+          if (data.product.availableStock <= 0 && !data.activeReservation) {
+            return "sold-out";
+          }
+          if (data.activeReservation) {
+            return "reserved";
+          }
+          return "idle";
+        });
+
+        if (!silent) setErrorMessage(null);
+      } catch (err) {
+        if (!silent) {
+          setPhase("error");
+          setErrorMessage(
+            err instanceof Error ? err.message : "Could not load drop"
+          );
+        }
+      } finally {
+        setIsInitialLoading(false);
+        setIsRefreshing(false);
+      }
+    },
+    [product]
+  );
 
   useEffect(() => {
     void loadProduct();
-  }, [loadProduct]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount only
+  }, []);
 
-  // Poll stock every 5s so the page reflects what others are taking
   useEffect(() => {
-    if (!product) return;
+    if (!product?.id) return;
     const id = window.setInterval(() => {
-      void loadProduct(product.id);
+      void loadProduct(product.id, { silent: true });
     }, STOCK_POLL_MS);
     return () => window.clearInterval(id);
   }, [product?.id, loadProduct]);
 
   const reserve = useCallback(async () => {
     if (!product) return;
-    setPhase("loading");
+    setIsReserving(true);
     setErrorMessage(null);
     try {
       const result = await reserveProduct(product.id, 1);
@@ -79,21 +106,19 @@ export function useProductDrop() {
       setPhase("reserved");
     } catch (err) {
       if (err instanceof ApiError) {
-        if (err.status === 409) {
-          setErrorMessage(err.message);
-          if (err.message.includes("already have")) {
-            await loadProduct(product.id);
-            return;
-          }
-          setPhase(product.availableStock <= 0 ? "sold-out" : "idle");
-          await loadProduct(product.id);
+        setErrorMessage(err.message);
+        if (err.message.includes("already have")) {
+          await loadProduct(product.id, { silent: true });
           return;
         }
-        setErrorMessage(err.message);
-      } else {
-        setErrorMessage("Something went wrong — try again");
+        setPhase(product.availableStock <= 0 ? "sold-out" : "idle");
+        await loadProduct(product.id, { silent: true });
+        return;
       }
-      setPhase("error");
+      setErrorMessage("Something went wrong — check your connection and try again");
+      setPhase("idle");
+    } finally {
+      setIsReserving(false);
     }
   }, [product, loadProduct]);
 
@@ -107,15 +132,17 @@ export function useProductDrop() {
       setPhase("purchased");
     } catch (err) {
       setErrorMessage(err instanceof ApiError ? err.message : "Checkout failed");
-      setPhase("error");
+      setPhase("reserved");
     }
   }, [reservation]);
 
   const onExpired = useCallback(() => {
     setReservation(null);
     setPhase("expired");
-    void loadProduct(product?.id);
+    void loadProduct(product?.id, { silent: true });
   }, [loadProduct, product?.id]);
+
+  const dismissError = useCallback(() => setErrorMessage(null), []);
 
   return {
     product,
@@ -123,9 +150,14 @@ export function useProductDrop() {
     phase,
     errorMessage,
     orderId,
+    isInitialLoading,
+    isRefreshing,
+    isReserving,
+    lastRefreshedAt,
     reserve,
     checkout,
     onExpired,
-    reload: loadProduct,
+    dismissError,
+    reload: () => loadProduct(),
   };
 }

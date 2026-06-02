@@ -1,13 +1,39 @@
 import { Button } from "../components/Button";
-import { CountdownBanner } from "../components/CountdownBanner";
-import { StockBadge } from "../components/StockBadge";
+import { CountdownPanel } from "../components/drop/CountdownPanel";
+import { DropStepGuide } from "../components/drop/DropStepGuide";
+import { StockMeter } from "../components/drop/StockMeter";
+import { AppShell } from "../components/layout/AppShell";
+import { Alert } from "../components/ui/Alert";
+import { LiveIndicator } from "../components/ui/LiveIndicator";
+import { DropPageSkeleton } from "../components/ui/Skeleton";
 import { useProductDrop } from "../hooks/useProductDrop";
+import type { DropPhase } from "../hooks/useProductDrop";
 
 function formatPrice(cents: number): string {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
   }).format(cents / 100);
+}
+
+function statusLabel(phase: DropPhase): string {
+  switch (phase) {
+    case "idle":
+      return "Open";
+    case "reserved":
+    case "checking-out":
+      return "Held for you";
+    case "sold-out":
+      return "Sold out";
+    case "purchased":
+      return "Confirmed";
+    case "expired":
+      return "Expired";
+    case "error":
+      return "Error";
+    default:
+      return "Open";
+  }
 }
 
 export function LimitedDropPage() {
@@ -17,103 +43,150 @@ export function LimitedDropPage() {
     phase,
     errorMessage,
     orderId,
+    isInitialLoading,
+    isRefreshing,
+    isReserving,
+    lastRefreshedAt,
     reserve,
     checkout,
     onExpired,
+    dismissError,
     reload,
   } = useProductDrop();
 
-  if (phase === "loading" && !product) {
+  if (isInitialLoading && !product) {
     return (
-      <div className="page page--center">
-        <p className="muted">Loading drop…</p>
-      </div>
+      <AppShell>
+        <DropPageSkeleton />
+      </AppShell>
     );
   }
 
   if (!product) {
     return (
-      <div className="page page--center">
-        <p className="error">{errorMessage ?? "Product unavailable"}</p>
-        <Button variant="secondary" onClick={() => void reload()}>
-          Retry
-        </Button>
-      </div>
+      <AppShell>
+        <div className="state-empty">
+          <Alert variant="error" title="Drop unavailable">
+            {errorMessage ?? "We could not load the product. Is the API running?"}
+          </Alert>
+          <Button variant="secondary" onClick={() => void reload()}>
+            Try again
+          </Button>
+        </div>
+      </AppShell>
     );
   }
 
   const soldOut = product.availableStock <= 0 && !reservation;
   const canReserve =
-    !soldOut && !reservation && phase !== "purchased" && phase !== "checking-out";
+    !soldOut &&
+    !reservation &&
+    phase !== "purchased" &&
+    phase !== "checking-out" &&
+    phase !== "expired";
   const showCheckout =
     reservation != null && (phase === "reserved" || phase === "checking-out");
 
   return (
-    <div className="page">
-      <header className="hero">
-        <p className="hero__eyebrow">StockGuard Limited Drop</p>
-        <h1 className="hero__title">{product.name}</h1>
-        {product.description ? (
-          <p className="hero__desc">{product.description}</p>
-        ) : null}
-      </header>
-
-      <section className="card">
-        <div className="card__visual" aria-hidden>
-          <div className="sneaker-glyph">SG</div>
-        </div>
-
-        <div className="card__body">
-          <p className="price">{formatPrice(product.priceCents)}</p>
-          <StockBadge available={product.availableStock} total={product.totalStock} />
-
-          {reservation && phase !== "purchased" ? (
-            <CountdownBanner
-              expiresAt={reservation.expiresAt}
-              onExpired={onExpired}
+    <AppShell>
+      <div className="drop-layout">
+        <section className="drop-hero">
+          <div className="drop-hero__top">
+            <span className={`status-chip status-chip--${phase}`}>
+              {statusLabel(phase)}
+            </span>
+            <LiveIndicator
+              isRefreshing={isRefreshing}
+              lastRefreshedAt={lastRefreshedAt}
             />
-          ) : null}
-
-          {phase === "expired" ? (
-            <p className="notice notice--warn">
-              Your hold timed out. Stock may already be gone — reserve again if you still see units.
-            </p>
-          ) : null}
-
-          {phase === "purchased" && orderId ? (
-            <p className="notice notice--success">
-              Order confirmed <code>{orderId.slice(0, 8)}…</code> — thanks!
-            </p>
-          ) : null}
-
-          {errorMessage ? <p className="error">{errorMessage}</p> : null}
-
-          <div className="actions">
-            {showCheckout && reservation ? (
-              <Button
-                variant="primary"
-                loading={phase === "checking-out"}
-                onClick={() => void checkout()}
-              >
-                Complete checkout
-              </Button>
-            ) : (
-              <Button
-                variant="primary"
-                loading={phase === "loading"}
-                disabled={!canReserve || soldOut}
-                onClick={() => void reserve()}
-              >
-                {soldOut ? "Sold out" : "Reserve"}
-              </Button>
-            )}
           </div>
 
-          <p className="hint">
-            Stock refreshes every 5 seconds. Reservations lock inventory for 5 minutes.
-          </p>
-        </div>
-      </section>
-    </div>
+          <h1 className="drop-hero__title">{product.name}</h1>
+          {product.description ? (
+            <p className="drop-hero__desc">{product.description}</p>
+          ) : null}
+        </section>
+
+        <article className="product-card">
+          <div className="product-card__visual">
+            <div className="product-card__glow" aria-hidden />
+            <div className="product-card__shoe" aria-hidden>
+              <span className="product-card__mark">01</span>
+              <span className="product-card__edition">Limited release</span>
+            </div>
+          </div>
+
+          <div className="product-card__body">
+            <div className="product-card__price-row">
+              <p className="product-card__price">{formatPrice(product.priceCents)}</p>
+              <p className="product-card__price-note">Tax included · 1 per customer</p>
+            </div>
+
+            <StockMeter
+              available={product.availableStock}
+              total={product.totalStock}
+            />
+
+            {reservation && phase !== "purchased" ? (
+              <CountdownPanel
+                expiresAt={reservation.expiresAt}
+                onExpired={onExpired}
+              />
+            ) : null}
+
+            {phase === "expired" ? (
+              <Alert variant="warning" title="Reservation expired">
+                Your 5-minute hold ended and stock was released. Grab another pair if any
+                are still showing.
+              </Alert>
+            ) : null}
+
+            {phase === "purchased" && orderId ? (
+              <Alert variant="success" title="You're in!">
+                Order <code className="order-id">{orderId.slice(0, 10)}…</code> is confirmed.
+                Thanks for shopping the drop.
+              </Alert>
+            ) : null}
+
+            {errorMessage ? (
+              <Alert variant="error" title="Something went wrong" onDismiss={dismissError}>
+                {errorMessage}
+              </Alert>
+            ) : null}
+
+            <div className="product-card__actions">
+              {showCheckout && reservation ? (
+                <Button
+                  variant="primary"
+                  size="lg"
+                  loading={phase === "checking-out"}
+                  onClick={() => void checkout()}
+                >
+                  Complete checkout
+                </Button>
+              ) : (
+                <Button
+                  variant="primary"
+                  size="lg"
+                  loading={isReserving}
+                  disabled={!canReserve || soldOut}
+                  onClick={() => void reserve()}
+                >
+                  {soldOut ? "Sold out" : isReserving ? "Reserving…" : "Reserve my pair"}
+                </Button>
+              )}
+
+              {phase === "purchased" ? (
+                <Button variant="secondary" onClick={() => void reload()}>
+                  View drop again
+                </Button>
+              ) : null}
+            </div>
+          </div>
+        </article>
+
+        <DropStepGuide />
+      </div>
+    </AppShell>
   );
 }
