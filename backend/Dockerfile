@@ -19,7 +19,6 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 COPY prisma ./prisma
-COPY docker-entrypoint.sh ./
-RUN chmod +x docker-entrypoint.sh
 EXPOSE 4000
-ENTRYPOINT ["sh", "./docker-entrypoint.sh"]
+# Inline startup — avoids Windows CRLF breaking docker-entrypoint.sh
+CMD ["sh", "-c", "npx prisma migrate deploy && (npx prisma db seed || true) && node dist/index.js"]

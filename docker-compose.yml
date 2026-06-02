@@ -1,8 +1,16 @@
-# StockGuard — local dev stack (MySQL + API + React UI)
+# StockGuard — Docker stack (MySQL + API + React)
+#
+# First time or after switching DB:  docker compose down -v
+# Then:                              docker compose up --build
+#
+# UI:  http://localhost:5173   API:  http://localhost:4000/health
+
+name: stockguard
+
 services:
   mysql:
     image: mysql:8.4
-    container_name: stockguard-db
+    container_name: stockguard-mysql
     restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: root
@@ -13,17 +21,20 @@ services:
       - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
+    networks:
+      - stockguard-net
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-ustockguard", "-pstockguard"]
       interval: 5s
       timeout: 5s
-      retries: 10
-      start_period: 30s
+      retries: 12
+      start_period: 40s
 
   api:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    image: stockguard-api:local
     container_name: stockguard-api
     restart: unless-stopped
     depends_on:
@@ -32,12 +43,15 @@ services:
     environment:
       NODE_ENV: production
       PORT: 4000
+      # Always MySQL inside Docker — do not override from a Postgres .env
       DATABASE_URL: mysql://stockguard:stockguard@mysql:3306/stockguard
       JWT_SECRET: ${JWT_SECRET:-change-me-in-production-use-16-chars-min}
-      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173}
+      CORS_ORIGIN: http://localhost:5173,http://127.0.0.1:5173
       RESERVATION_TTL_MINUTES: 5
     ports:
       - "4000:4000"
+    networks:
+      - stockguard-net
     healthcheck:
       test:
         [
@@ -48,15 +62,17 @@ services:
         ]
       interval: 10s
       timeout: 5s
-      retries: 8
-      start_period: 60s
+      retries: 10
+      start_period: 90s
 
   web:
     build:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        VITE_API_URL: ""
+        # Browser calls the API on the host — no nginx → api proxy needed
+        VITE_API_URL: http://localhost:4000
+    image: stockguard-web:local
     container_name: stockguard-web
     restart: unless-stopped
     depends_on:
@@ -64,6 +80,12 @@ services:
         condition: service_healthy
     ports:
       - "5173:80"
+    networks:
+      - stockguard-net
+
+networks:
+  stockguard-net:
+    driver: bridge
 
 volumes:
   mysql_data:
