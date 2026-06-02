@@ -11,7 +11,8 @@ backend/prisma/seed.d.ts
 *.tsbuildinfo
 
 # Environment (never commit secrets)
-.env
+backend/.env
+frontend/.env
 .env.local
 .env.*.local
 

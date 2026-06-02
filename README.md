@@ -7,11 +7,28 @@ Limited-stock product drop system for high-concurrency reservations. When many s
 | Repository | [github.com/Habimana06/StockGuard](https://github.com/Habimana06/StockGuard) |
 | Deploy (Pxxl) | _Add your `https://*.pxxl.app` URL after deploy_ |
 
+## Environment files
+
+| File | Purpose |
+|------|---------|
+| `backend/.env` | **API only** — `DATABASE_URL`, `JWT_SECRET`, `PORT`, etc. |
+| `frontend/.env` | Optional — `VITE_API_URL` for `npm run dev` |
+| `docker-compose.yml` | MySQL container users/passwords (not in `.env`) |
+
+### MySQL credentials (Docker defaults)
+
+| Role | User | Password | Database |
+|------|------|----------|----------|
+| **Root** (admin) | `root` | `root` | — |
+| **App** (API / Prisma) | `stockguard` | `stockguard` | `stockguard` |
+
+Use the **app** user in `DATABASE_URL`, not root.
+
 ## Quick start (Docker)
 
 ```bash
-cp .env.example .env
-# Set JWT_SECRET to a long random string in .env
+cp backend/.env.example backend/.env
+# Edit backend/.env — set JWT_SECRET (16+ characters)
 docker compose up --build
 ```
 
@@ -30,12 +47,13 @@ docker compose up mysql -d
 
 # Terminal 2 — API
 cd backend && npm install
-cp ../.env.example .env
+cp .env.example .env
 npx prisma migrate deploy && npm run db:seed
 npm run dev
 
 # Terminal 3 — UI
 cd frontend && npm install
+cp .env.example .env
 npm run dev
 ```
 

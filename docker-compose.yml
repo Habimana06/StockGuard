@@ -1,9 +1,15 @@
 # StockGuard — Docker stack (MySQL + API + React)
 #
-# First time or after switching DB:  docker compose down -v
-# Then:                              docker compose up --build
+# MySQL credentials (development defaults):
+#   ROOT:     user=root        password=root
+#   APP:      user=stockguard  password=stockguard  database=stockguard
 #
-# UI:  http://localhost:5173   API:  http://localhost:4000/health
+# Backend secrets live in backend/.env — copy from backend/.env.example
+#
+# First time / after DB change:  docker compose down -v
+# Start:                         docker compose up --build
+#
+# UI: http://localhost:5173   API: http://localhost:4000/health
 
 name: stockguard
 
@@ -37,17 +43,17 @@ services:
     image: stockguard-api:local
     container_name: stockguard-api
     restart: unless-stopped
+    env_file:
+      - ./backend/.env
     depends_on:
       mysql:
         condition: service_healthy
     environment:
       NODE_ENV: production
       PORT: 4000
-      # Always MySQL inside Docker — do not override from a Postgres .env
+      # Inside Docker the DB host is the service name "mysql", not localhost
       DATABASE_URL: mysql://stockguard:stockguard@mysql:3306/stockguard
-      JWT_SECRET: ${JWT_SECRET:-change-me-in-production-use-16-chars-min}
       CORS_ORIGIN: http://localhost:5173,http://127.0.0.1:5173
-      RESERVATION_TTL_MINUTES: 5
     ports:
       - "4000:4000"
     networks:
@@ -70,7 +76,6 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        # Browser calls the API on the host — no nginx → api proxy needed
         VITE_API_URL: http://localhost:4000
     image: stockguard-web:local
     container_name: stockguard-web
