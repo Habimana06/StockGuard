@@ -11,7 +11,7 @@ export default defineConfig({
       NODE_ENV: "test",
       DATABASE_URL:
         process.env.DATABASE_URL ??
-        "postgresql://stockguard:stockguard@localhost:5432/stockguard",
+        "mysql://stockguard:stockguard@localhost:3306/stockguard",
       JWT_SECRET: "test-jwt-secret-min-16-chars",
       CORS_ORIGIN: "http://localhost:5173",
       RESERVATION_TTL_MINUTES: "5",

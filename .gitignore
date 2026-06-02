@@ -36,4 +36,4 @@ coverage/
 Thumbs.db
 
 # Docker volumes (local only)
-postgres_data/
+mysql_data/

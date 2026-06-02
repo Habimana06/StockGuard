@@ -26,7 +26,7 @@ docker compose up --build
 
 ```bash
 # Terminal 1 — database
-docker compose up postgres -d
+docker compose up mysql -d
 
 # Terminal 2 — API
 cd backend && npm install
@@ -55,7 +55,7 @@ flowchart TB
     Log[Pino structured logs]
   end
 
-  subgraph data [PostgreSQL]
+  subgraph data [MySQL]
     Product[(Product.availableStock)]
     Res[(Reservation)]
     Inv[(InventoryLog audit)]
@@ -106,14 +106,14 @@ Send `X-Guest-Id` (any stable string ≥ 8 chars) for the drop page without logi
 
 | Choice | Benefit | Cost |
 |--------|---------|------|
-| Postgres row-level `updateMany` vs Redis lock | Strong consistency, simpler ops | DB becomes hot spot under extreme load |
+| MySQL row-level `updateMany` vs Redis lock | Strong consistency, simpler ops | DB becomes hot spot under extreme load |
 | In-process cron vs queue | Easy Docker/Render deploy | Multiple API replicas need external cron or leader election |
 | Guest header vs forced login | Faster UX for assessment demo | Weaker identity than full auth |
 | In-memory `/metrics` | Zero dependencies | Not shared across instances |
 
 ## What breaks at ~10,000 concurrent users
 
-- **Postgres connection pool** — default pool exhausts; queries queue and time out.
+- **MySQL connection pool** — default pool exhausts; queries queue and time out.
 - **Single API instance** — CPU on JSON + Prisma; rate limiter is per-process.
 - **Row lock contention** — all reserves hit one `Product` row for a drop.
 - **Cron duplication** — N replicas expire the same rows unless only one runs cron.
@@ -131,7 +131,7 @@ Send `X-Guest-Id` (any stable string ≥ 8 chars) for the drop page without logi
 ## Testing
 
 ```bash
-cd backend && npm test    # needs Postgres (docker compose up postgres -d)
+cd backend && npm test    # needs MySQL (docker compose up mysql -d)
 cd frontend && npm test
 ```
 

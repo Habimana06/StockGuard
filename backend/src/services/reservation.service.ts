@@ -206,9 +206,10 @@ export async function listProducts(query: ListProductsQuery) {
     where.availableStock = { gte: query.minStock };
   }
   if (query.search) {
+    // MySQL default collation is case-insensitive for utf8mb4_unicode_ci
     where.OR = [
-      { name: { contains: query.search, mode: "insensitive" } },
-      { description: { contains: query.search, mode: "insensitive" } },
+      { name: { contains: query.search } },
+      { description: { contains: query.search } },
     ];
   }
 

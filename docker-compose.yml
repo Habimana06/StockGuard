@@ -1,22 +1,24 @@
-# StockGuard — local dev stack (Postgres + API + React UI)
+# StockGuard — local dev stack (MySQL + API + React UI)
 services:
-  postgres:
-    image: postgres:16-alpine
+  mysql:
+    image: mysql:8.4
     container_name: stockguard-db
     restart: unless-stopped
     environment:
-      POSTGRES_USER: stockguard
-      POSTGRES_PASSWORD: stockguard
-      POSTGRES_DB: stockguard
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: stockguard
+      MYSQL_USER: stockguard
+      MYSQL_PASSWORD: stockguard
     ports:
-      - "5432:5432"
+      - "3306:3306"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - mysql_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U stockguard -d stockguard"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-ustockguard", "-pstockguard"]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 30s
 
   api:
     build:
@@ -25,17 +27,29 @@ services:
     container_name: stockguard-api
     restart: unless-stopped
     depends_on:
-      postgres:
+      mysql:
         condition: service_healthy
     environment:
       NODE_ENV: production
       PORT: 4000
-      DATABASE_URL: postgresql://stockguard:stockguard@postgres:5432/stockguard
-      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      DATABASE_URL: mysql://stockguard:stockguard@mysql:3306/stockguard
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production-use-16-chars-min}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173}
       RESERVATION_TTL_MINUTES: 5
     ports:
       - "4000:4000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:4000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 8
+      start_period: 60s
 
   web:
     build:
@@ -46,9 +60,10 @@ services:
     container_name: stockguard-web
     restart: unless-stopped
     depends_on:
-      - api
+      api:
+        condition: service_healthy
     ports:
       - "5173:80"
 
 volumes:
-  postgres_data:
+  mysql_data:
