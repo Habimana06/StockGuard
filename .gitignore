@@ -6,6 +6,8 @@ node_modules/
 # Build outputs
 dist/
 build/
+backend/prisma/seed.js
+backend/prisma/seed.d.ts
 *.tsbuildinfo
 
 # Environment (never commit secrets)
@@ -32,9 +34,6 @@ coverage/
 # OS
 .DS_Store
 Thumbs.db
-
-# Prisma
-backend/prisma/migrations/**/migration_lock.toml
 
 # Docker volumes (local only)
 postgres_data/
