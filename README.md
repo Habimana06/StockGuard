@@ -19,8 +19,10 @@ Limited-stock product drop system for high-concurrency reservations. When many s
 
 | Role | User | Password | Database |
 |------|------|----------|----------|
-| **Root** (admin) | `root` | `root` | — |
+| **Root** (admin) | `root` | `62001` | — |
 | **App** (API / Prisma) | `stockguard` | `stockguard` | `stockguard` |
+
+**Host port:** `3307` (mapped to `3306` in the container — use `3307` in Workbench / local `DATABASE_URL`).
 
 Use the **app** user in `DATABASE_URL`, not root.
 
