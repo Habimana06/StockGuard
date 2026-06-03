@@ -8,6 +8,7 @@ import {
   type Product,
 } from "../api/products";
 import { ApiError } from "../api/client";
+import type { CheckoutPaymentPayload } from "../types/payment";
 
 const STOCK_POLL_MS = 5000;
 
@@ -26,6 +27,7 @@ export function useProductDrop() {
   const [phase, setPhase] = useState<DropPhase>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [orderId, setOrderId] = useState<string | null>(null);
+  const [paymentLabel, setPaymentLabel] = useState<string | null>(null);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isReserving, setIsReserving] = useState(false);
@@ -127,19 +129,23 @@ export function useProductDrop() {
     }
   }, [product, loadProduct]);
 
-  const checkout = useCallback(async () => {
-    if (!reservation) return;
-    setPhase("checking-out");
-    setErrorMessage(null);
-    try {
-      const result = await checkoutReservation(reservation.id);
-      setOrderId(result.orderId);
-      setPhase("purchased");
-    } catch (err) {
-      setErrorMessage(err instanceof ApiError ? err.message : "Checkout failed");
-      setPhase("reserved");
-    }
-  }, [reservation]);
+  const checkout = useCallback(
+    async (payment: CheckoutPaymentPayload) => {
+      if (!reservation) return;
+      setPhase("checking-out");
+      setErrorMessage(null);
+      try {
+        const result = await checkoutReservation(payment);
+        setOrderId(result.orderId);
+        setPaymentLabel(result.paymentLabel ?? null);
+        setPhase("purchased");
+      } catch (err) {
+        setErrorMessage(err instanceof ApiError ? err.message : "Checkout failed");
+        setPhase("reserved");
+      }
+    },
+    [reservation]
+  );
 
   const onExpired = useCallback(() => {
     setReservation(null);
@@ -155,6 +161,7 @@ export function useProductDrop() {
     phase,
     errorMessage,
     orderId,
+    paymentLabel,
     isInitialLoading,
     isRefreshing,
     isReserving,

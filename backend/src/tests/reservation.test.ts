@@ -132,7 +132,13 @@ describe("POST /api/checkout", () => {
 
     const order = await checkoutReservation({
       userId: user.id,
-      reservationId: held.reservationId,
+      payment: {
+        method: "BANK",
+        reservationId: held.reservationId,
+        accountHolder: "Test User",
+        bankName: "Test Bank",
+        accountLast4: "1234",
+      },
     });
 
     expect(order.orderId).toBeDefined();

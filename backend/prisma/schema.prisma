@@ -24,6 +24,12 @@ enum InventoryAction {
   SEED
 }
 
+enum PaymentMethod {
+  CARD
+  BANK
+  MOBILE
+}
+
 model User {
   id           String        @id @default(cuid())
   email        String        @unique
@@ -73,13 +79,16 @@ model Reservation {
 }
 
 model Order {
-  id            String       @id @default(cuid())
+  id            String         @id @default(cuid())
   userId        String
   productId     String
-  reservationId String       @unique
+  reservationId String         @unique
   quantity      Int
   totalCents    Int
-  createdAt     DateTime     @default(now())
+  paymentMethod PaymentMethod?
+  // Masked label only — e.g. "Bank ···· 4521" — never store full account numbers
+  paymentLabel  String?
+  createdAt     DateTime       @default(now())
   user          User         @relation(fields: [userId], references: [id])
   product       Product      @relation(fields: [productId], references: [id])
   reservation   Reservation  @relation(fields: [reservationId], references: [id])

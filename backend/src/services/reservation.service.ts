@@ -1,8 +1,10 @@
 import {
   InventoryAction,
+  PaymentMethod,
   ReservationStatus,
   type Prisma,
 } from "@prisma/client";
+import type { CheckoutBody } from "../validators/schemas.js";
 import { prisma } from "../lib/prisma.js";
 import { reservationExpiresAt } from "../config/env.js";
 import { ConflictError, NotFoundError, ValidationError } from "../types/errors.js";
@@ -118,21 +120,48 @@ export async function reserveProduct(input: ReserveInput): Promise<ReserveResult
 
 export interface CheckoutInput {
   userId: string;
-  reservationId: string;
+  payment: CheckoutBody;
 }
 
 export interface CheckoutResult {
   orderId: string;
   reservationId: string;
   totalCents: number;
+  paymentMethod: PaymentMethod;
+  paymentLabel: string;
+}
+
+function buildPaymentMeta(payment: CheckoutBody): {
+  method: PaymentMethod;
+  label: string;
+} {
+  switch (payment.method) {
+    case "CARD":
+      return {
+        method: PaymentMethod.CARD,
+        label: `${payment.cardBrand ?? "Card"} ···· ${payment.cardLast4} (${payment.cardHolder})`,
+      };
+    case "BANK":
+      return {
+        method: PaymentMethod.BANK,
+        label: `${payment.bankName} ···· ${payment.accountLast4} (${payment.accountHolder})`,
+      };
+    case "MOBILE":
+      return {
+        method: PaymentMethod.MOBILE,
+        label: `${payment.provider} ···· ${payment.phoneLast4} (${payment.accountHolder})`,
+      };
+  }
 }
 
 export async function checkoutReservation(input: CheckoutInput): Promise<CheckoutResult> {
+  const reservationId = input.payment.reservationId;
+  const { method, label } = buildPaymentMeta(input.payment);
   await expireStaleReservations();
 
   return prisma.$transaction(async (tx) => {
     const reservation = await tx.reservation.findUnique({
-      where: { id: input.reservationId },
+      where: { id: reservationId },
       include: { product: true, order: true },
     });
 
@@ -161,6 +190,8 @@ export async function checkoutReservation(input: CheckoutInput): Promise<Checkou
         reservationId: reservation.id,
         quantity: reservation.quantity,
         totalCents,
+        paymentMethod: method,
+        paymentLabel: label,
       },
     });
 
@@ -187,6 +218,8 @@ export async function checkoutReservation(input: CheckoutInput): Promise<Checkou
       orderId: order.id,
       reservationId: reservation.id,
       totalCents,
+      paymentMethod: method,
+      paymentLabel: label,
     };
   });
 }

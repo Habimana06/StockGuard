@@ -47,6 +47,7 @@ export function LimitedDropPage() {
     phase,
     errorMessage,
     orderId,
+    paymentLabel,
     isInitialLoading,
     isRefreshing,
     isReserving,
@@ -141,7 +142,7 @@ export function LimitedDropPage() {
                   quantity={qty}
                   reservationId={reservation.id}
                   isCheckingOut={phase === "checking-out"}
-                  onCheckout={() => void checkout()}
+                  onCheckout={(payment) => void checkout(payment)}
                   onExpired={onExpired}
                 />
               ) : (
@@ -155,8 +156,13 @@ export function LimitedDropPage() {
 
                   {phase === "purchased" && orderId ? (
                     <div className="success-panel">
-                      <Alert variant="success" title="Checkout complete">
+                      <Alert variant="success" title="Payment successful">
                         <span>Thank you! Your order is confirmed.</span>
+                        {paymentLabel ? (
+                          <p className="payment-receipt">
+                            Paid via <strong>{paymentLabel}</strong>
+                          </p>
+                        ) : null}
                         <CopyChip label="Order ID" value={orderId} />
                       </Alert>
                       <OrderSummary

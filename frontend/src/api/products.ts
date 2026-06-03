@@ -1,4 +1,5 @@
 import { apiFetch } from "./client";
+import type { CheckoutPaymentPayload } from "../types/payment";
 
 export interface Product {
   id: string;
@@ -34,6 +35,8 @@ export interface CheckoutResponse {
   orderId: string;
   reservationId: string;
   totalCents: number;
+  paymentMethod?: string;
+  paymentLabel?: string;
 }
 
 export async function fetchDropProduct(productId: string): Promise<ProductDetailResponse> {
@@ -62,10 +65,10 @@ export async function reserveProduct(
 }
 
 export async function checkoutReservation(
-  reservationId: string
+  payment: CheckoutPaymentPayload
 ): Promise<CheckoutResponse> {
   return apiFetch<CheckoutResponse>("/api/checkout", {
     method: "POST",
-    body: JSON.stringify({ reservationId }),
+    body: JSON.stringify(payment),
   });
 }

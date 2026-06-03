@@ -1,6 +1,9 @@
 import { Button } from "../Button";
+import { usePaymentForm } from "../../hooks/usePaymentForm";
+import type { CheckoutPaymentPayload } from "../../types/payment";
 import { CountdownPanel } from "./CountdownPanel";
 import { OrderSummary } from "./OrderSummary";
+import { PaymentForm } from "./PaymentForm";
 
 interface CheckoutSectionProps {
   expiresAt: string;
@@ -9,7 +12,7 @@ interface CheckoutSectionProps {
   quantity: number;
   reservationId: string;
   isCheckingOut: boolean;
-  onCheckout: () => void;
+  onCheckout: (payment: CheckoutPaymentPayload) => void;
   onExpired: () => void;
 }
 
@@ -31,6 +34,15 @@ export function CheckoutSection({
   onExpired,
 }: CheckoutSectionProps) {
   const total = priceCents * quantity;
+  const paymentForm = usePaymentForm(reservationId);
+
+  const handlePay = () => {
+    paymentForm.markTouched();
+    const payload = paymentForm.buildPayload();
+    if (payload) {
+      onCheckout(payload);
+    }
+  };
 
   return (
     <section className="checkout-flow" aria-label="Checkout">
@@ -46,11 +58,13 @@ export function CheckoutSection({
           <span className="checkout-step__icon" aria-hidden>
             2
           </span>
-          <span className="checkout-step__text">Pay now</span>
+          <span className="checkout-step__text">Pay</span>
         </div>
       </div>
 
       <CountdownPanel expiresAt={expiresAt} onExpired={onExpired} />
+
+      <PaymentForm form={paymentForm} />
 
       <div className="checkout-flow__card">
         <div className="checkout-flow__total-row">
@@ -58,21 +72,30 @@ export function CheckoutSection({
             <p className="checkout-flow__total-label">Amount due</p>
             <p className="checkout-flow__total">{formatPrice(total)}</p>
           </div>
-          <p className="checkout-flow__secure">Secure checkout</p>
+          <p className="checkout-flow__secure">Encrypted · PCI-style demo</p>
         </div>
 
         <Button
           variant="checkout"
           size="lg"
           loading={isCheckingOut}
-          onClick={onCheckout}
+          disabled={!paymentForm.isValid}
+          onClick={handlePay}
         >
-          {isCheckingOut ? "Processing…" : `Complete checkout · ${formatPrice(total)}`}
+          {isCheckingOut
+            ? "Processing payment…"
+            : `Pay ${formatPrice(total)} now`}
         </Button>
 
+        {!paymentForm.isValid && paymentForm.touched ? (
+          <p className="checkout-flow__validation-hint">
+            Fill in all required payment fields above to continue.
+          </p>
+        ) : null}
+
         <p className="checkout-flow__fine">
-          By completing checkout you confirm your order. Stock is already held under
-          reservation <span className="checkout-flow__ref">{reservationId.slice(0, 8)}…</span>.
+          Payment is simulated for this demo. Stock is held under reservation{" "}
+          <span className="checkout-flow__ref">{reservationId.slice(0, 8)}…</span>.
         </p>
       </div>
 

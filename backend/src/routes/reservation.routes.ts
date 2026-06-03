@@ -6,7 +6,11 @@ import {
   checkoutReservation,
   reserveProduct,
 } from "../services/reservation.service.js";
-import { checkoutBodySchema, reserveBodySchema } from "../validators/schemas.js";
+import {
+  checkoutBodySchema,
+  reserveBodySchema,
+  type CheckoutBody,
+} from "../validators/schemas.js";
 
 export const reservationRouter = Router();
 
@@ -30,10 +34,10 @@ reservationRouter.post(
   "/checkout",
   validate(checkoutBodySchema),
   asyncHandler(async (req, res) => {
-    const body = req.body as { reservationId: string };
+    const payment = req.body as CheckoutBody;
     const result = await checkoutReservation({
       userId: req.auth!.userId,
-      reservationId: body.reservationId,
+      payment,
     });
     res.status(201).json(result);
   })

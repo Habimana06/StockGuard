@@ -5,9 +5,33 @@ export const reserveBodySchema = z.object({
   quantity: z.coerce.number().int().min(1).max(10),
 });
 
-export const checkoutBodySchema = z.object({
-  reservationId: z.string().cuid(),
-});
+const last4 = z.string().length(4).regex(/^\d{4}$/, "Last 4 digits required");
+
+export const checkoutBodySchema = z.discriminatedUnion("method", [
+  z.object({
+    reservationId: z.string().cuid(),
+    method: z.literal("CARD"),
+    cardHolder: z.string().min(2).max(80),
+    cardLast4: last4,
+    cardBrand: z.enum(["visa", "mastercard", "amex", "other"]).optional(),
+  }),
+  z.object({
+    reservationId: z.string().cuid(),
+    method: z.literal("BANK"),
+    accountHolder: z.string().min(2).max(80),
+    bankName: z.string().min(2).max(80),
+    accountLast4: last4,
+  }),
+  z.object({
+    reservationId: z.string().cuid(),
+    method: z.literal("MOBILE"),
+    accountHolder: z.string().min(2).max(80),
+    provider: z.string().min(2).max(40),
+    phoneLast4: last4,
+  }),
+]);
+
+export type CheckoutBody = z.infer<typeof checkoutBodySchema>;
 
 export const authRegisterSchema = z.object({
   email: z.string().email(),
