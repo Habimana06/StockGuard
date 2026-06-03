@@ -1,13 +1,13 @@
-# Nixpacks / Pxxl — use Root Directory = backend, Port = 4000
+# Pxxl: Root Directory = backend | Port = 4000
 
 [phases.setup]
 nixPkgs = ["nodejs_22", "openssl"]
 
 [phases.install]
-cmds = ["npm ci"]
+cmds = ["npm install"]
 
 [phases.build]
-cmds = ["npx prisma generate", "npm run build"]
+cmds = ["npm run build"]
 
 [start]
-cmd = "sh -c 'npx prisma migrate deploy && (npx prisma db seed || true) && node dist/index.js'"
+cmd = "sh scripts/start-deploy.sh"

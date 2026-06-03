@@ -14,7 +14,11 @@ export type Env = z.infer<typeof envSchema>;
 function loadEnv(): Env {
   const parsed = envSchema.safeParse(process.env);
   if (!parsed.success) {
-    console.error("Invalid environment configuration:", parsed.error.flatten());
+    const details = parsed.error.flatten().fieldErrors;
+    console.error("Invalid environment configuration:", details);
+    console.error(
+      "Required on Pxxl: DATABASE_URL, JWT_SECRET (16+ chars), PORT=4000, CORS_ORIGIN"
+    );
     throw new Error("Fix environment variables before starting the server.");
   }
   return parsed.data;

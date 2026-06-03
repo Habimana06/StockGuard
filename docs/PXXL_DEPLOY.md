@@ -68,8 +68,11 @@ Create a **new** project → GitHub → **Habimana06/StockGuard** → branch **`
 | **Root Directory** | `backend` |
 | **Port** | `4000` |
 | **Install command** (if asked) | `npm ci` |
-| **Build command** | `npx prisma generate && npm run build` |
-| **Start command** | `npx prisma migrate deploy && (npx prisma db seed \|\| true) && node dist/index.js` |
+| **Install command** | `npm install` |
+| **Build command** | `npm run build` |
+| **Start command** | `npm run start:deploy` |
+
+Deploy still failing after DB works? → **[PXXL_DEPLOY_FIX.md](./PXXL_DEPLOY_FIX.md)**
 
 If Pxxl auto-detects Node.js, you may only need to set **Root Directory** and **Port**; add build/start commands manually if the deploy fails.
 

@@ -10,7 +10,8 @@ async function main() {
   await prisma.$connect();
   startExpiryCron();
 
-  app.listen(env.PORT, () => {
+  // 0.0.0.0 required so Pxxl/Docker can reach the process from outside the container
+  app.listen(env.PORT, "0.0.0.0", () => {
     logger.info(
       { port: env.PORT, ttlMinutes: env.RESERVATION_TTL_MINUTES },
       "StockGuard API listening"

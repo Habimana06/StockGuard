@@ -8,5 +8,10 @@ JWT_SECRET=replace-with-long-secret-min-16-chars
 CORS_ORIGIN=https://stockguard.pxxl.click,http://localhost:5173
 RESERVATION_TTL_MINUTES=5
 
+# Pxxl build/start (if asked separately):
+# Install: npm install
+# Build:   npm run build
+# Start:   npm run start:deploy
+
 # --- Frontend project (separate Pxxl app) ---
 # VITE_API_URL=https://stockguard-api.pxxl.click
