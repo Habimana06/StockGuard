@@ -209,17 +209,21 @@ The **Full-Stack Developer Test** asks for a **hosted link on Pxxl**. That is th
 
 ## Deploying to Pxxl (recommended for submission)
 
-**If you see `unsupported language: unknown`** — you deployed from repo root `/`. See **[docs/PXXL_DEPLOY.md](docs/PXXL_DEPLOY.md)** (set Root Directory to `backend` or `frontend`, not `/`).
+**Full guide:** [docs/PXXL_DEPLOY.md](docs/PXXL_DEPLOY.md) · **Env template:** [docs/pxxl-env.example.txt](docs/pxxl-env.example.txt)
 
-1. Sign in at [pxxl.app](https://pxxl.app/) and create a new project from your GitHub repo.
-2. Deploy **MySQL** (or attach a managed MySQL URL).
-3. Deploy the **API** — Root Directory: **`backend`**, Port: **`4000`** — env vars:
-   - `DATABASE_URL` — MySQL connection string
-   - `JWT_SECRET` — long random string (16+ chars)
-   - `CORS_ORIGIN` — your Pxxl frontend URL (and `http://localhost:5173` for local tests)
-4. Run migrations on deploy: `npx prisma migrate deploy` and `npx prisma db seed`.
-5. Deploy the **frontend** — second project, Root Directory: **`frontend`**, Port: **`3000`**, env: `VITE_API_URL=https://your-api-url`, then `npm run build` + `npm start`.
-6. Copy the public **frontend URL** into this README (`<!-- LIVE_DEMO_URL -->`).
+**Fix `unsupported language: unknown`:** Root Directory = **`backend`** or **`frontend`**, not `/`.
+
+| Component | Root directory | Port |
+|-----------|----------------|------|
+| API | `backend` | `4000` |
+| Frontend | `frontend` | `3000` |
+
+**Build:** `npx prisma generate && npm run build`  
+**Start:** `npx prisma migrate deploy && (npx prisma db seed || true) && node dist/index.js`
+
+**Frontend on Pxxl or Vercel:** `VITE_API_URL=https://your-api-url` — redeploy UI after setting this.
+
+MySQL on Pxxl failed? [docs/DATABASE_SETUP.md](docs/DATABASE_SETUP.md) (Railway works the same).
 
 ---
 
