@@ -1,5 +1,5 @@
 import { Button } from "../components/Button";
-import { CountdownPanel } from "../components/drop/CountdownPanel";
+import { CheckoutSection } from "../components/drop/CheckoutSection";
 import { DropStepGuide } from "../components/drop/DropStepGuide";
 import { OrderSummary } from "../components/drop/OrderSummary";
 import { ProductImage } from "../components/drop/ProductImage";
@@ -133,76 +133,76 @@ export function LimitedDropPage() {
                 total={product.totalStock}
               />
 
-              {reservation && phase !== "purchased" ? (
-                <CountdownPanel
+              {showCheckout && reservation ? (
+                <CheckoutSection
                   expiresAt={reservation.expiresAt}
+                  productName={product.name}
+                  priceCents={product.priceCents}
+                  quantity={qty}
+                  reservationId={reservation.id}
+                  isCheckingOut={phase === "checking-out"}
+                  onCheckout={() => void checkout()}
                   onExpired={onExpired}
                 />
-              ) : null}
+              ) : (
+                <>
+                  {phase === "expired" ? (
+                    <Alert variant="warning" title="Reservation expired">
+                      Your 5-minute hold ended. Stock was released — reserve again if units
+                      are still available.
+                    </Alert>
+                  ) : null}
 
-              {phase === "expired" ? (
-                <Alert variant="warning" title="Reservation expired">
-                  Your 5-minute hold ended. Stock was released — reserve again if units are
-                  still available.
-                </Alert>
-              ) : null}
+                  {phase === "purchased" && orderId ? (
+                    <div className="success-panel">
+                      <Alert variant="success" title="Checkout complete">
+                        <span>Thank you! Your order is confirmed.</span>
+                        <CopyChip label="Order ID" value={orderId} />
+                      </Alert>
+                      <OrderSummary
+                        productName={product.name}
+                        priceCents={product.priceCents}
+                        quantity={qty}
+                      />
+                      <Button variant="secondary" onClick={() => void reload()}>
+                        Back to drop
+                      </Button>
+                    </div>
+                  ) : null}
 
-              {phase === "purchased" && orderId ? (
-                <Alert variant="success" title="Checkout complete">
-                  <span>Thank you! Your order is confirmed.</span>
-                  <CopyChip label="Order ID" value={orderId} />
-                </Alert>
-              ) : null}
+                  {!isOnline ? (
+                    <Alert variant="warning" title="Network issue">
+                      Could not reach the server. Stock may be outdated until connection
+                      returns.
+                    </Alert>
+                  ) : null}
 
-              {!isOnline ? (
-                <Alert variant="warning" title="Network issue">
-                  Could not reach the server. Stock may be outdated until connection returns.
-                </Alert>
-              ) : null}
+                  {errorMessage ? (
+                    <Alert variant="error" title="Action failed" onDismiss={dismissError}>
+                      {errorMessage}
+                    </Alert>
+                  ) : null}
 
-              {errorMessage ? (
-                <Alert variant="error" title="Action failed" onDismiss={dismissError}>
-                  {errorMessage}
-                </Alert>
-              ) : null}
-
-              <div className="purchase-panel__actions">
-                {showCheckout && reservation ? (
-                  <Button
-                    variant="primary"
-                    size="lg"
-                    loading={phase === "checking-out"}
-                    onClick={() => void checkout()}
-                  >
-                    Complete checkout — {formatPrice(product.priceCents)}
-                  </Button>
-                ) : (
-                  <Button
-                    variant="primary"
-                    size="lg"
-                    loading={isReserving}
-                    disabled={!canReserve || soldOut}
-                    onClick={() => void reserve()}
-                  >
-                    {soldOut ? "Sold out" : isReserving ? "Reserving…" : "Reserve now"}
-                  </Button>
-                )}
-              </div>
-
-              {reservation && phase !== "purchased" ? (
-                <CopyChip label="Reservation" value={reservation.id} />
-              ) : null}
+                  {phase !== "purchased" ? (
+                    <div className="purchase-panel__actions">
+                      <Button
+                        variant="primary"
+                        size="lg"
+                        loading={isReserving}
+                        disabled={!canReserve || soldOut}
+                        onClick={() => void reserve()}
+                      >
+                        {soldOut ? "Sold out" : isReserving ? "Reserving…" : "Reserve now"}
+                      </Button>
+                      <p className="purchase-panel__reserve-hint">
+                        After reserving, a 5-minute countdown starts — complete checkout before
+                        it expires.
+                      </p>
+                    </div>
+                  ) : null}
+                </>
+              )}
             </div>
-
-            {(showCheckout || phase === "purchased") && (
-              <OrderSummary
-                productName={product.name}
-                priceCents={product.priceCents}
-                quantity={qty}
-                reservationId={reservation?.id}
-                showCheckoutHint={showCheckout}
-              />
-            )}
           </section>
         </div>
 
