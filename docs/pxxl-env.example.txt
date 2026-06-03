@@ -1,0 +1,12 @@
+# Copy these into Pxxl → Environment Variables (backend project)
+# Replace placeholders before deploy
+
+NODE_ENV=production
+PORT=4000
+DATABASE_URL=mysql://USER:PASSWORD@db.pxxl.pro:3306/stockguard-db
+JWT_SECRET=replace-with-long-secret-min-16-chars
+CORS_ORIGIN=https://stockguard.pxxl.click,http://localhost:5173
+RESERVATION_TTL_MINUTES=5
+
+# --- Frontend project (separate Pxxl app) ---
+# VITE_API_URL=https://stockguard-api.pxxl.click

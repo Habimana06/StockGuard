@@ -1,123 +1,207 @@
-# Fix Pxxl deploy — "unsupported language: unknown"
+# StockGuard — Pxxl deployment (problem & solution)
 
-## Why it failed
-
-Your screenshot shows:
-
-- **Root directory:** `/` (repo root)
-- **Port:** `3000`
-- **Framework:** Not detected
-
-StockGuard is a **monorepo**: code lives in `backend/` and `frontend/`. There is **no** `package.json` at the repo root, so Pxxl cannot detect Node/React and shows **unsupported language: unknown**.
-
-You must **not** deploy from `/` alone. Deploy **`backend`** and **`frontend`** as separate apps (or use Docker — see below).
+Use this guide to redeploy after the `unsupported language: unknown` error.
 
 ---
 
-## Option A — Two Pxxl projects (recommended)
+## Problem
 
-### 1) MySQL database on Pxxl
+Pxxl scans the **repo root** (`/`) and only sees `docker-compose.yml` — there is **no** `package.json` at the root. The app lives in subfolders:
 
-1. In Pxxl dashboard → **Databases** → create **MySQL**.
-2. Copy the connection string (looks like `mysql://user:pass@host:3306/db`).
+- `backend/` — Node.js API  
+- `frontend/` — React UI  
 
-**If Create Database fails** → see **[DATABASE_SETUP.md](./DATABASE_SETUP.md)** (use Railway/TiDB MySQL + same Pxxl API deploy).
+So Pxxl shows:
 
-### 2) Backend API project
+```text
+Project Creation Failed: unsupported language: unknown
+```
 
-Create a **new** project from the same GitHub repo:
+**Do not deploy from `/`.** Set **Root Directory** to `backend` or `frontend`.
+
+---
+
+## Solution overview
+
+| # | What | Where |
+|---|------|--------|
+| 1 | MySQL | Pxxl database **or** [Railway](./DATABASE_SETUP.md) if Pxxl DB fails |
+| 2 | API | Pxxl project → Root: **`backend`**, Port: **`4000`** |
+| 3 | UI | Pxxl project → Root: **`frontend`**, Port: **`3000`** (or Vercel) |
+
+---
+
+## Step 1 — Database (MySQL)
+
+### On Pxxl
+
+| Field | Value |
+|--------|--------|
+| Type | **MySQL** |
+| Name | `stockguard-db` (or `sg-habimana-2026` if name is taken) |
+| Server | `db.pxxl.pro` |
+| Daily backups | **Unchecked** (Pro only) |
+
+Click **Create Database**. Copy the full **connection string** from the database dashboard.
+
+Example format:
+
+```text
+mysql://USER:PASSWORD@db.pxxl.pro:3306/stockguard-db
+```
+
+### If Create Database fails
+
+Use free MySQL on **Railway** instead — see [DATABASE_SETUP.md](./DATABASE_SETUP.md).  
+Paste that URL as `DATABASE_URL` in Step 2 (works the same).
+
+---
+
+## Step 2 — Backend API on Pxxl
+
+Create a **new** project → GitHub → **Habimana06/StockGuard** → branch **`main`**.
+
+### Project settings
 
 | Setting | Value |
 |---------|--------|
-| **Root directory** | `backend` |
+| **Root Directory** | `backend` |
 | **Port** | `4000` |
-| **Framework** | Node.js (should auto-detect after root is set) |
+| **Install command** (if asked) | `npm ci` |
+| **Build command** | `npx prisma generate && npm run build` |
+| **Start command** | `npx prisma migrate deploy && (npx prisma db seed \|\| true) && node dist/index.js` |
 
-**Environment variables:**
+If Pxxl auto-detects Node.js, you may only need to set **Root Directory** and **Port**; add build/start commands manually if the deploy fails.
+
+### Environment variables
+
+Add these in Pxxl → **Environment Variables**:
 
 ```env
 NODE_ENV=production
 PORT=4000
-DATABASE_URL=mysql://....(from Pxxl MySQL)
-JWT_SECRET=your-long-random-secret-min-16-chars
+DATABASE_URL=mysql://USER:PASSWORD@db.pxxl.pro:3306/stockguard-db
+JWT_SECRET=your-long-random-secret-min-16-characters
 CORS_ORIGIN=https://stockguard.pxxl.click,http://localhost:5173
 RESERVATION_TTL_MINUTES=5
 ```
 
-After deploy, open: `https://YOUR-API-URL/health` → should return `"status":"ok"`.
+Replace:
 
-### 3) Frontend project
+| Variable | Replace with |
+|----------|----------------|
+| `DATABASE_URL` | Full string from Pxxl MySQL **or** Railway |
+| `JWT_SECRET` | Any secret string, **16+ characters** |
+| `CORS_ORIGIN` | Your **frontend** URL (e.g. `https://stockguard.pxxl.click`) |
 
-Create **another** Pxxl project (same repo):
+### Deploy & verify
+
+1. Click **Deploy Project**.
+2. Wait until the build is **Running**.
+3. Open: `https://YOUR-API-DOMAIN/health`  
+4. Expected JSON: `"status":"ok"` and `"database":"connected"`.
+
+Example API URL: `https://stockguard-api.pxxl.click/health`
+
+---
+
+## Step 3 — Frontend
+
+### Option A — Pxxl (same platform, recommended for submission)
+
+Create a **second** Pxxl project (same GitHub repo).
 
 | Setting | Value |
 |---------|--------|
-| **Root directory** | `frontend` |
+| **Root Directory** | `frontend` |
 | **Port** | `3000` |
-| **Build command** | `npm run build` |
+| **Build command** | `npm ci && npm run build` |
 | **Start command** | `npm start` |
 
-**Environment variable:**
+**Environment variable** (set **before** build):
 
 ```env
-VITE_API_URL=https://YOUR-API-URL
+VITE_API_URL=https://YOUR-API-URL-FROM-STEP-2
 ```
 
-Rebuild after setting `VITE_API_URL` (Vite bakes it in at build time).
+Example:
 
-Your live demo URL = **frontend** URL (e.g. `https://stockguard.pxxl.click`).
+```env
+VITE_API_URL=https://stockguard-api.pxxl.click
+```
 
----
+No trailing slash. **Redeploy** after changing `VITE_API_URL`.
 
-## Option B — Single Docker deploy (API only)
+**Live demo URL** = this frontend domain (e.g. `https://stockguard.pxxl.click`).
 
-If Pxxl supports **Dockerfile** deploy from repo root:
+### Option B — Vercel or Netlify
 
 | Setting | Value |
 |---------|--------|
-| **Root directory** | `/` |
-| **Dockerfile** | `Dockerfile` (at repo root) |
-| **Port** | `4000` |
+| Root directory | `frontend` |
+| Build command | `npm run build` |
+| Output directory | `dist` |
+| Env var | `VITE_API_URL=https://YOUR-API-URL` |
 
-Set the same env vars as the backend above. You still need MySQL and a separate frontend deploy (or host frontend on Vercel pointing at this API).
-
----
-
-## Option C — Pxxl "Multiple Services"
-
-If your plan has **Multiple Services: Enabled**:
-
-1. Service 1: path `backend`, port `4000`
-2. Service 2: path `frontend`, port `3000`, env `VITE_API_URL` → internal API URL
+Still deploy the **API on Pxxl** (Step 2). Only the UI is on Vercel/Netlify.
 
 ---
 
-## Wrong settings (what you had)
+## Step 4 — Redeploy checklist
+
+Use this order every time you change config:
+
+- [ ] MySQL running and `DATABASE_URL` is correct  
+- [ ] Backend: Root = `backend`, Port = `4000`, env vars saved  
+- [ ] `/health` returns ok  
+- [ ] Frontend: Root = `frontend`, `VITE_API_URL` = API URL  
+- [ ] Frontend **rebuilt** after env change  
+- [ ] Site: Reserve → countdown → payment → Pay works  
+- [ ] Paste live URL + Loom link in `README.md`  
+
+---
+
+## Wrong vs correct (quick reference)
 
 | Setting | Wrong | Correct |
 |---------|-------|---------|
-| Root `/` | No app here | `backend` or `frontend` |
-| Port `3000` for root | API uses **4000** | Backend **4000**, frontend **3000** |
-| One project for whole repo | Monorepo | **Two** projects or Multiple Services |
+| Root directory | `/` | `backend` or `frontend` |
+| Port (API) | `3000` | `4000` |
+| Port (UI) | `4000` | `3000` |
+| One project for whole repo | Yes | **Two** projects |
+| `VITE_API_URL` missing | UI cannot call API | Must match API URL |
+| Deploy UI before API | Health fails | API first, then UI |
 
 ---
 
-## After deploy
+## Troubleshooting
 
-1. Paste frontend URL in `README.md` (Live demo).
-2. Record Loom using the **live** URL.
-3. Test: Reserve → countdown → payment → Pay.
+| Issue | Fix |
+|-------|-----|
+| `unsupported language: unknown` | Root Directory = `backend` or `frontend`, not `/` |
+| Build fails on Prisma | Build command includes `npx prisma generate` |
+| `/health` database unavailable | Fix `DATABASE_URL`; use Railway if Pxxl DB failed |
+| UI loads, Reserve fails | Set `VITE_API_URL`, **redeploy frontend** |
+| CORS error | Add frontend URL to `CORS_ORIGIN` on backend, redeploy API |
+| Pxxl DB create fails | [DATABASE_SETUP.md](./DATABASE_SETUP.md) → Railway MySQL |
 
 ---
 
-## CLI (optional)
+## Copy-paste template (`backend/.env` for local only)
 
-```bash
-npm i -g pxxl-cli   # if available from pxxl.app docs
-cd backend
-pxxl launch
-pxxl env set DATABASE_URL=...
-pxxl ship
+For **local** Docker, use `backend/.env`. On **Pxxl**, use the dashboard env vars above (not the file).
+
+```env
+DATABASE_URL=mysql://stockguard:stockguard@127.0.0.1:3307/stockguard
+JWT_SECRET=your-long-random-secret-min-16-characters
+PORT=4000
+CORS_ORIGIN=http://localhost:5173
+RESERVATION_TTL_MINUTES=5
 ```
 
-Repeat for `frontend/` with `VITE_API_URL`.
+---
+
+## Related docs
+
+- [DATABASE_SETUP.md](./DATABASE_SETUP.md) — MySQL on Railway if Pxxl DB fails  
+- [SUBMISSION.md](./SUBMISSION.md) — GitHub + Loom + live URL  
