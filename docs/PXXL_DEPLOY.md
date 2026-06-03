@@ -21,6 +21,8 @@ You must **not** deploy from `/` alone. Deploy **`backend`** and **`frontend`** 
 1. In Pxxl dashboard → **Databases** → create **MySQL**.
 2. Copy the connection string (looks like `mysql://user:pass@host:3306/db`).
 
+**If Create Database fails** → see **[DATABASE_SETUP.md](./DATABASE_SETUP.md)** (use Railway/TiDB MySQL + same Pxxl API deploy).
+
 ### 2) Backend API project
 
 Create a **new** project from the same GitHub repo:
