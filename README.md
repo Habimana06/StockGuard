@@ -5,7 +5,9 @@ Limited-stock product drop system for high-concurrency reservations. When many s
 | Link | URL |
 |------|-----|
 | Repository | [github.com/Habimana06/StockGuard](https://github.com/Habimana06/StockGuard) |
-| Deploy (Pxxl) | _Add your `https://*.pxxl.app` URL after deploy_ |
+| Live demo (required) | **<!-- LIVE_DEMO_URL -->** _Paste your Pxxl URL here, e.g. `https://your-app.pxxl.app`_ |
+| Loom walkthrough (required) | **<!-- LOOM_VIDEO_URL -->** _Paste your 5–8 min Loom link here_ |
+| Architecture diagram | See [Architecture](#architecture) below (or add `docs/architecture.png`) |
 
 ## Environment files
 
@@ -155,17 +157,81 @@ cd backend && npm test    # needs MySQL (docker compose up mysql -d)
 cd frontend && npm test
 ```
 
-## Deploying to Pxxl
+## What is still required from you (submission)
 
-1. Push this repo to GitHub.
-2. Create services on [pxxl.app](https://pxxl.app/) for API + static frontend (or full Docker image).
-3. Set `DATABASE_URL`, `JWT_SECRET`, `CORS_ORIGIN` to your Pxxl URLs.
-4. Run migrations on deploy (`prisma migrate deploy`).
-5. Optional: Render cron hitting `POST /internal/expire` — we use in-app `node-cron` so the API self-heals without extra infra.
+Code in this repo is largely complete. **You** still need to finish these deliverables from the assessment brief:
 
-## Loom walkthrough
+| # | Deliverable | Status | What to do |
+|---|-------------|--------|------------|
+| 1 | **GitHub repo** | Done | [github.com/Habimana06/StockGuard](https://github.com/Habimana06/StockGuard) |
+| 2 | **Live hosted app** | **You** | Deploy to [Pxxl](https://pxxl.app/) (see below) and paste URL in the table at the top |
+| 3 | **Loom video (5–8 min)** | **You** | Record walkthrough; paste link in the table at the top |
+| 4 | **Architecture diagram** | Partial | Mermaid diagram is in this README; optional: export a PNG to `docs/architecture.png` |
+| 5 | **README** (race conditions, schema, trade-offs, scaling) | Done | Sections below |
+| 6 | **Docker** | Done | `docker compose up --build` |
 
-Record a 5–8 minute video covering: architecture diagram, reserve → countdown → checkout, concurrency test, and README trade-offs.
+### How to submit (typical flow)
+
+1. Confirm the app runs locally (`docker compose up --build` → http://localhost:5173).
+2. Deploy API + database + frontend to **Pxxl** (required by the test — not only Vercel).
+3. Update the **Live demo** and **Loom** rows at the top of this README with your real URLs.
+4. Push README changes to GitHub.
+5. Send recruiters your **GitHub link + live Pxxl URL + Loom URL** (email or application form).
+
+---
+
+## Pxxl vs Vercel — which to use?
+
+### Pxxl ([pxxl.app](https://pxxl.app/))
+
+The **Full-Stack Developer Test** asks for a **hosted link on Pxxl**. That is the platform they use to review your project. You should deploy there for submission.
+
+- Usually supports full apps (API + database + frontend or Docker).
+- Your live URL will look like `https://something.pxxl.app`.
+
+### Vercel ([vercel.com](https://vercel.com))
+
+**Vercel is great for the React frontend only** (static site from `frontend/`).
+
+| Part | Vercel? | Why |
+|------|---------|-----|
+| Frontend (`frontend/`) | Yes | Static build; set `VITE_API_URL` to your API URL |
+| Backend API | Not ideal alone | Needs MySQL, long-running server, cron for expiry — use Railway, Render, Fly.io, or **Pxxl** for the API |
+| MySQL | No | Use PlanetScale, Railway MySQL, or the DB included with Pxxl/Docker host |
+
+**Practical setup if you like Vercel:**
+
+- **API + MySQL:** Pxxl, Render, or Railway (one URL, e.g. `https://stockguard-api.onrender.com`)
+- **UI:** Vercel → set `VITE_API_URL=https://your-api-url`
+- **For the internship:** still add the **Pxxl** live link if that is what they grade.
+
+---
+
+## Deploying to Pxxl (recommended for submission)
+
+1. Sign in at [pxxl.app](https://pxxl.app/) and create a new project from your GitHub repo.
+2. Deploy **MySQL** (or attach a managed MySQL URL).
+3. Deploy the **API** (`backend/`) with env vars:
+   - `DATABASE_URL` — MySQL connection string
+   - `JWT_SECRET` — long random string (16+ chars)
+   - `CORS_ORIGIN` — your Pxxl frontend URL (and `http://localhost:5173` for local tests)
+4. Run migrations on deploy: `npx prisma migrate deploy` and `npx prisma db seed`.
+5. Deploy the **frontend** with build arg / env: `VITE_API_URL=https://your-api-url`.
+6. Copy the public **frontend URL** into this README (`<!-- LIVE_DEMO_URL -->`).
+
+---
+
+## Loom walkthrough (5–8 minutes)
+
+Record a video and paste the link at the top of this README (`<!-- LOOM_VIDEO_URL -->`).
+
+**Suggested script:**
+
+1. Problem: limited stock + many users at once (30 sec).
+2. Architecture: browser → API → MySQL, 5-minute reservations (1 min).
+3. Demo: open live site → show stock polling → **Reserve** → **countdown** → choose **payment method** (bank/card/mobile) → **Pay** → success (2–3 min).
+4. Mention race conditions (`updateMany`), expiry cron, tests (1 min).
+5. README: trade-offs and what breaks at 10k users (1 min).
 
 ---
 
