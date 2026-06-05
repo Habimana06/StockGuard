@@ -139,9 +139,12 @@ No trailing slash. **Redeploy** after changing `VITE_API_URL`.
 
 ### Option B — Vercel or Netlify
 
+See **[VERCEL_DEPLOY.md](./VERCEL_DEPLOY.md)** if you get `react-scripts: command not found`.
+
 | Setting | Value |
 |---------|--------|
 | Root directory | `frontend` |
+| Framework | **Vite** (not Create React App) |
 | Build command | `npm run build` |
 | Output directory | `dist` |
 | Env var | `VITE_API_URL=https://YOUR-API-URL` |
